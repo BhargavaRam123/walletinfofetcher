@@ -259,7 +259,6 @@ export default function Home() {
             <li>Once connected, you can view your wallet balance and recent transactions.</li>
             <li>To send SOL, enter the amount and recipient's address in the "Send SOL" section.</li>
             <li>Click "Send Payment" to initiate the transaction.</li>
-            <li>Wait for the transaction to be confirmed. You'll see a notification when it's done.</li>
             <li>Your wallet balance will automatically update after the transaction.</li>
             <li>You can refresh your transaction history using the "Refresh" button.</li>
             <li>To view information for a different wallet, use the "Paste Public Key" option.</li>
