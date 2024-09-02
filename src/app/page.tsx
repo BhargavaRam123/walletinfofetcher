@@ -1,113 +1,155 @@
-import Image from "next/image";
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { useWallet } from '@solana/wallet-adapter-react';
+import dynamic from 'next/dynamic';
+
+const WalletMultiButton = dynamic(
+  () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletMultiButton),
+  { ssr: false }
+);
+
+interface WalletInfo {
+  balance: number;
+  recentTransactions: Array<{
+    signature: string;
+  }>;
+}
 
 export default function Home() {
+  const [publicKey, setPublicKey] = useState<string>('');
+  const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  const [mode, setMode] = useState<'connect' | 'paste'>('connect');
+
+  const wallet = useWallet();
+
+  useEffect(() => {
+    if (wallet.connected && wallet.publicKey) {
+      handleFetchInfo(wallet.publicKey.toString());
+    }
+  }, [wallet.connected, wallet.publicKey]);
+
+  const handleFetchInfo = async (key: string) => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const connection = new Connection('https://solana-mainnet.g.alchemy.com/v2/t-r1pwyDboIWAnUCBeCl_nN97zB5TxYm', 'confirmed');
+      const pubKey = new PublicKey(key);
+
+      const balance = await connection.getBalance(pubKey);
+      const transactionSignatures = await connection.getSignaturesForAddress(pubKey, { limit: 5 });
+
+      setWalletInfo({
+        balance,
+        recentTransactions: transactionSignatures.map(tx => ({ signature: tx.signature }))
+      });
+    } catch (error) {
+      console.error('Error fetching wallet info:', error);
+      setError("Failed to fetch wallet info. Please check the public key and try again.");
+      setWalletInfo(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (publicKey) {
+      handleFetchInfo(publicKey);
+    } else {
+      setError("Please enter a public key");
+    }
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">src/app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:size-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-gray-100 font-sans">
+      <header className="py-6 px-4 sm:px-6 lg:px-8 border-b border-gray-700">
+        <nav className="flex justify-between items-center max-w-7xl mx-auto">
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600"
           >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
+            sol.lens
+          </motion.div>
+        </nav>
+      </header>
 
-      <div className="relative z-[-1] flex place-items-center before:absolute before:h-[300px] before:w-full before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 sm:before:w-[480px] sm:after:w-[240px] before:lg:h-[360px]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className="mb-32 grid text-center lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
+      <main className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          className="text-center mb-12"
         >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+          <h1 className="text-4xl font-light mb-4">sol.lens Wallet Explorer</h1>
+          <p className="text-lg font-light text-gray-400 mb-8">Analyze any Solana wallet with precision and ease.</p>
+          <div className="max-w-md mx-auto">
+            <div className="flex justify-center space-x-4 mb-4">
+              <button
+                onClick={() => setMode('connect')}
+                className={`px-4 py-2 rounded-lg ${mode === 'connect' ? 'bg-blue-600' : 'bg-gray-600'}`}
+              >
+                Connect Wallet
+              </button>
+              <button
+                onClick={() => setMode('paste')}
+                className={`px-4 py-2 rounded-lg ${mode === 'paste' ? 'bg-blue-600' : 'bg-gray-600'}`}
+              >
+                Paste Public Key
+              </button>
+            </div>
+            {mode === 'connect' ? (
+              <div className="flex justify-center">
+                <WalletMultiButton />
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  className="focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full py-3 px-4 sm:text-lg border-2 border-gray-600 rounded-lg bg-gray-800 text-white placeholder-gray-400 shadow-md transition duration-300 ease-in-out"
+                  placeholder="Enter Solana public key"
+                  value={publicKey}
+                  onChange={(e) => setPublicKey(e.target.value)}
+                />
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  type="submit"
+                  disabled={isLoading}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-light rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  {isLoading ? 'Analyzing...' : 'Analyze'}
+                </motion.button>
+              </form>
+            )}
+            {error && <p className="mt-2 text-sm text-red-500">{error}</p>}
+          </div>
+        </motion.div>
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-sm opacity-50">
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className="mb-3 text-2xl font-semibold">
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className="m-0 max-w-[30ch] text-balance text-sm opacity-50">
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+        {walletInfo && (
+          <div className="bg-gray-800 p-6 rounded-2xl shadow-lg">
+            <h3 className="text-lg font-mono text-gray-100">Wallet Information</h3>
+            <div className="mt-4">
+              <p className="text-sm font-mono text-gray-300">
+                <strong>Balance:</strong> {walletInfo.balance / 1e9} SOL
+              </p>
+              <p className="text-sm font-mono text-gray-300 mt-2">
+                <strong>Recent Transactions:</strong>
+              </p>
+              <ul className="list-disc list-inside text-gray-300">
+                {walletInfo.recentTransactions.map((txn, idx) => (
+                  <li key={idx}>{txn.signature}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
   );
 }
